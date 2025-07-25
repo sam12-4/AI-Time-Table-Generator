@@ -1,103 +1,185 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from 'react';
+import { TimetableGenerator } from '@/lib/timetable-generator';
+import { Subject, TimeSlot, TimetableConfig, GeneratedTimetable } from '@/types/timetable';
+import SubjectForm from '@/components/SubjectForm';
+import TimeSlotForm from '@/components/TimeSlotForm';
+import TimetableGrid from '@/components/TimetableGrid';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(TimetableGenerator.generateDefaultTimeSlots());
+  const [generatedTimetable, setGeneratedTimetable] = useState<GeneratedTimetable | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const generateTimetable = async () => {
+    if (subjects.length === 0) {
+      alert('Please add at least one subject');
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    // Simulate AI processing delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const config: TimetableConfig = {
+      subjects,
+      timeSlots,
+      resources: [],
+      constraints: []
+    };
+
+    const generator = new TimetableGenerator(config);
+    const result = generator.generateTimetable();
+    
+    setGeneratedTimetable(result);
+    setIsGenerating(false);
+  };
+
+  const clearAll = () => {
+    setSubjects([]);
+    setGeneratedTimetable(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Futuristic Header */}
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 futuristic-grid opacity-20"></div>
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <div className="text-center">
+            <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4">
+              AI Timetable Generator
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Advanced constraint-based scheduling with intelligent conflict resolution
+            </p>
+            <div className="flex justify-center mt-6">
+              <div className="h-1 w-32 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-6 py-12">
+        <div className="grid lg:grid-cols-2 gap-12">
+          {/* Input Section */}
+          <div className="space-y-8">
+            {/* Subject Management */}
+            <div className="glass-morphism rounded-2xl p-8">
+              <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                Subjects & Courses
+              </h2>
+              <SubjectForm 
+                onAddSubject={(subject) => setSubjects([...subjects, subject])}
+                onRemoveSubject={(id) => setSubjects(subjects.filter(s => s.id !== id))}
+                subjects={subjects}
+              />
+            </div>
+
+            {/* Time Slots Management */}
+            <div className="glass-morphism rounded-2xl p-8">
+              <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                Time Configuration
+              </h2>
+              <TimeSlotForm 
+                timeSlots={timeSlots}
+                onUpdateTimeSlots={setTimeSlots}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4">
+              <button
+                onClick={generateTimetable}
+                disabled={isGenerating || subjects.length === 0}
+                className="flex-1 group relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 font-semibold text-white transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-purple-700 translate-y-full transition-transform duration-300 group-hover:translate-y-0"></div>
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  {isGenerating ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Generate Timetable
+                    </>
+                  )}
+                </span>
+              </button>
+              
+              <button
+                onClick={clearAll}
+                className="px-6 py-4 rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          {/* Results Section */}
+          <div className="space-y-8">
+            {generatedTimetable && (
+              <div className="glass-morphism rounded-2xl p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-semibold flex items-center gap-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    Generated Timetable
+                  </h2>
+                  <div className="flex items-center gap-4">
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      generatedTimetable.success 
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                        : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                    }`}>
+                      {generatedTimetable.completionRate.toFixed(1)}% Complete
+                    </div>
+                  </div>
+                </div>
+                
+                <TimetableGrid 
+                  timetable={generatedTimetable}
+                  subjects={subjects}
+                  timeSlots={timeSlots}
+                />
+                
+                {generatedTimetable.conflicts.length > 0 && (
+                  <div className="mt-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+                    <h3 className="font-semibold text-yellow-400 mb-2">Conflicts Detected:</h3>
+                    <ul className="text-sm text-yellow-300 space-y-1">
+                      {generatedTimetable.conflicts.map((conflict, index) => (
+                        <li key={index}>{conflict.description}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!generatedTimetable && (
+              <div className="glass-morphism rounded-2xl p-8 text-center">
+                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                  <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">No Timetable Generated</h3>
+                <p className="text-muted-foreground">Add subjects and generate your timetable to see it here</p>
+              </div>
+            )}
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }

@@ -82,13 +82,13 @@ export default function TimeSlotForm({ timeSlots, onUpdateTimeSlots }: TimeSlotF
         <div className="flex gap-2">
           <button
             onClick={() => setIsCustomizing(!isCustomizing)}
-            className="px-4 py-2 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors text-sm"
+            className="px-4 py-2 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors text-sm cursor-pointer"
           >
             {isCustomizing ? 'Hide Custom' : 'Customize'}
           </button>
           <button
             onClick={resetToDefault}
-            className="px-4 py-2 rounded-lg border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-colors text-sm"
+            className="px-4 py-2 rounded-lg border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-colors text-sm cursor-pointer"
           >
             Reset Default
           </button>
@@ -133,7 +133,7 @@ export default function TimeSlotForm({ timeSlots, onUpdateTimeSlots }: TimeSlotF
             <div className="flex items-end">
               <button
                 onClick={addTimeSlot}
-                className="w-full px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600/80 to-purple-600/80 text-white hover:from-blue-600 hover:to-purple-600 transition-colors"
+                className="w-full px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600/80 to-purple-600/80 text-white hover:from-blue-600 hover:to-purple-600 transition-colors cursor-pointer"
               >
                 Add Slot
               </button>
@@ -163,7 +163,7 @@ export default function TimeSlotForm({ timeSlots, onUpdateTimeSlots }: TimeSlotF
                       {isCustomizing && slot.id.startsWith('custom-') && (
                         <button
                           onClick={() => removeTimeSlot(slot.id)}
-                          className="p-1 rounded text-red-400 hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
+                          className="p-1 rounded text-red-400 hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                         >
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

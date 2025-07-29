@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Subject } from '@/types/timetable';
+import { Subject, CSP_CONSTRAINTS } from '@/types/timetable';
 
 interface SubjectFormProps {
   onAddSubject: (subject: Subject) => void;
@@ -10,171 +10,237 @@ interface SubjectFormProps {
 }
 
 export default function SubjectForm({ onAddSubject, onRemoveSubject, subjects }: SubjectFormProps) {
-  const [formData, setFormData] = useState({
+  const [subjectForm, setSubjectForm] = useState({
     name: '',
-    duration: 60,
+    duration: 50,
     frequency: 1,
     teacher: '',
     room: ''
   });
+  const [errors, setErrors] = useState<string[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim()) return;
+  // Comprehensive validation function
+  const validateSubject = (): string[] => {
+    const validationErrors: string[] = [];
+
+    // Name validation
+    if (!subjectForm.name.trim()) {
+      validationErrors.push('Subject name is required');
+    } else if (subjectForm.name.trim().length < 2) {
+      validationErrors.push('Subject name must be at least 2 characters');
+    } else if (subjects.some(s => s.name.toLowerCase() === subjectForm.name.trim().toLowerCase())) {
+      validationErrors.push('Subject name already exists');
+    }
+
+    // Teacher validation
+    if (!subjectForm.teacher.trim()) {
+      validationErrors.push('Teacher name is required');
+    } else if (subjectForm.teacher.trim().length < 2) {
+      validationErrors.push('Teacher name must be at least 2 characters');
+    }
+
+    // Duration validation
+    if (subjectForm.duration < CSP_CONSTRAINTS.MIN_SUBJECT_DURATION) {
+      validationErrors.push(`Duration must be at least ${CSP_CONSTRAINTS.MIN_SUBJECT_DURATION} minutes`);
+    } else if (subjectForm.duration > CSP_CONSTRAINTS.MAX_SUBJECT_DURATION) {
+      validationErrors.push(`Duration cannot exceed ${CSP_CONSTRAINTS.MAX_SUBJECT_DURATION} minutes`);
+    }
+
+    // Frequency validation
+    if (subjectForm.frequency < CSP_CONSTRAINTS.MIN_FREQUENCY) {
+      validationErrors.push(`Frequency must be at least ${CSP_CONSTRAINTS.MIN_FREQUENCY}`);
+    } else if (subjectForm.frequency > CSP_CONSTRAINTS.MAX_FREQUENCY) {
+      validationErrors.push(`Frequency cannot exceed ${CSP_CONSTRAINTS.MAX_FREQUENCY}`);
+    }
+
+    // Teacher workload validation
+    const teacherName = subjectForm.teacher.trim();
+    const existingTeacherLoad = subjects
+      .filter(s => s.teacher.toLowerCase() === teacherName.toLowerCase())
+      .reduce((sum, s) => sum + s.frequency, 0);
+    
+    if (existingTeacherLoad + subjectForm.frequency > CSP_CONSTRAINTS.MAX_TEACHER_SLOTS_PER_WEEK) {
+      validationErrors.push(`Teacher "${teacherName}" would exceed ${CSP_CONSTRAINTS.MAX_TEACHER_SLOTS_PER_WEEK} slots/week limit (currently has ${existingTeacherLoad}, adding ${subjectForm.frequency})`);
+    }
+
+    return validationErrors;
+  };
+
+  const handleAddSubject = () => {
+    const validationErrors = validateSubject();
+    
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
     const subject: Subject = {
-      id: `subject-${Date.now()}`,
-      name: formData.name.trim(),
-      duration: formData.duration,
-      frequency: formData.frequency,
-      teacher: formData.teacher.trim() || undefined,
-      room: formData.room.trim() || undefined
+      id: `subject-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: subjectForm.name.trim(),
+      duration: subjectForm.duration,
+      frequency: subjectForm.frequency,
+      teacher: subjectForm.teacher.trim(),
+      room: subjectForm.room.trim() || undefined
     };
 
     onAddSubject(subject);
-    setFormData({
+    
+    // Reset form
+    setSubjectForm({
       name: '',
-      duration: 60,
+      duration: 50,
       frequency: 1,
       teacher: '',
       room: ''
     });
+    setErrors([]);
+  };
+
+  // Real-time validation on form changes
+  const handleFormChange = (field: string, value: any) => {
+    setSubjectForm(prev => ({ ...prev, [field]: value }));
+    
+    // Clear errors when user starts typing
+    if (errors.length > 0) {
+      setErrors([]);
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Add Subject Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Subject Name *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
-              placeholder="e.g., Mathematics"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Duration (minutes)
-            </label>
-            <input
-              type="number"
-              value={formData.duration}
-              onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 60 })}
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
-              min="30"
-              max="180"
-              step="15"
-            />
-          </div>
+      {/* Subject Input Form */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Subject Name *
+          </label>
+          <input
+            type="text"
+            value={subjectForm.name}
+            onChange={(e) => handleFormChange('name', e.target.value)}
+            placeholder="e.g., Discrete Mathematics, Quantum Computing"
+            className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Frequency (per week)
-            </label>
-            <input
-              type="number"
-              value={formData.frequency}
-              onChange={(e) => setFormData({ ...formData, frequency: parseInt(e.target.value) || 1 })}
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
-              min="1"
-              max="7"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Teacher (optional)
-            </label>
-            <input
-              type="text"
-              value={formData.teacher}
-              onChange={(e) => setFormData({ ...formData, teacher: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
-              placeholder="Teacher name"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Room (optional)
-            </label>
-            <input
-              type="text"
-              value={formData.room}
-              onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
-              placeholder="Room number"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Teacher Name *
+          </label>
+          <input
+            type="text"
+            value={subjectForm.teacher}
+            onChange={(e) => handleFormChange('teacher', e.target.value)}
+            placeholder="e.g., Dr. Shahab, Dr. Ali"
+            className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
         </div>
 
-        <button
-          type="submit"
-          className="w-full group relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600/80 to-purple-600/80 px-6 py-3 font-medium text-white transition-all duration-300 hover:from-blue-600 hover:to-purple-600 hover:shadow-lg hover:shadow-blue-500/25"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-purple-700 translate-x-full transition-transform duration-300 group-hover:translate-x-0"></div>
-          <span className="relative z-10 flex items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Subject
-          </span>
-        </button>
-      </form>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Duration (minutes)
+          </label>
+          <input
+            type="number"
+            value={subjectForm.duration}
+            onChange={(e) => handleFormChange('duration', parseInt(e.target.value) || 50)}
+            min={CSP_CONSTRAINTS.MIN_SUBJECT_DURATION}
+            max={CSP_CONSTRAINTS.MAX_SUBJECT_DURATION}
+            step="10"
+            className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Standard: 50 minutes</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Frequency (per week)
+          </label>
+          <input
+            type="number"
+            value={subjectForm.frequency}
+            onChange={(e) => handleFormChange('frequency', parseInt(e.target.value) || 1)}
+            min={CSP_CONSTRAINTS.MIN_FREQUENCY}
+            max={CSP_CONSTRAINTS.MAX_FREQUENCY}
+            className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Max 3 per teacher (CSP constraint)</p>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Room (optional)
+          </label>
+          <input
+            type="text"
+            value={subjectForm.room}
+            onChange={(e) => handleFormChange('room', e.target.value)}
+            placeholder="e.g., Room 101, Lab A, Auditorium"
+            className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
+        </div>
+      </div>
+
+      {/* Validation Errors */}
+      {errors.length > 0 && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+          <h4 className="font-semibold text-red-400 mb-2">Please fix the following errors:</h4>
+          <ul className="text-sm text-red-300 space-y-1">
+            {errors.map((error, index) => (
+              <li key={index}>• {error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <button
+        onClick={handleAddSubject}
+        className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/80 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-blue-600 to-purple-600 hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700"
+      >
+        Add Subject
+      </button>
 
       {/* Subject List */}
       {subjects.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-foreground">Added Subjects ({subjects.length})</h3>
+          <h3 className="font-semibold">Added Subjects ({subjects.length})</h3>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {subjects.map((subject) => (
-              <div
-                key={subject.id}
-                className="group flex items-center justify-between p-4 rounded-xl bg-secondary/50 border border-border hover:border-primary/30 transition-colors"
-              >
+              <div key={subject.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
                 <div className="flex-1">
-                  <div className="flex items-center gap-4">
-                    <h4 className="font-medium text-foreground">{subject.name}</h4>
-                    <div className="flex gap-2 text-sm text-muted-foreground">
-                      <span className="px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400">
-                        {subject.duration}min
-                      </span>
-                      <span className="px-2 py-1 rounded-lg bg-purple-500/20 text-purple-400">
-                        {subject.frequency}x/week
-                      </span>
-                      {subject.teacher && (
-                        <span className="px-2 py-1 rounded-lg bg-green-500/20 text-green-400">
-                          {subject.teacher}
-                        </span>
-                      )}
-                      {subject.room && (
-                        <span className="px-2 py-1 rounded-lg bg-orange-500/20 text-orange-400">
-                          {subject.room}
-                        </span>
-                      )}
-                    </div>
+                  <div className="font-medium text-foreground">{subject.name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Teacher: {subject.teacher} • {subject.duration}min • {subject.frequency}x/week
+                    {subject.room && ` • Room: ${subject.room}`}
                   </div>
                 </div>
                 <button
                   onClick={() => onRemoveSubject(subject.id)}
-                  className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
+                  className="ml-3 px-3 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm transition-colors cursor-pointer"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                  Remove
                 </button>
               </div>
             ))}
+          </div>
+
+          {/* Teacher Workload Summary */}
+          <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+            <h4 className="font-medium text-blue-400 mb-2">Teacher Workload Summary</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+              {Array.from(new Set(subjects.map(s => s.teacher))).map(teacher => {
+                const load = subjects.filter(s => s.teacher === teacher).reduce((sum, s) => sum + s.frequency, 0);
+                const isOverload = load > CSP_CONSTRAINTS.MAX_TEACHER_SLOTS_PER_WEEK;
+                const isMaxLoad = load === CSP_CONSTRAINTS.MAX_TEACHER_SLOTS_PER_WEEK;
+                
+                return (
+                  <div key={teacher} className={`flex justify-between ${isOverload ? 'text-red-400' : isMaxLoad ? 'text-yellow-400' : 'text-blue-300'}`}>
+                    <span>{teacher}:</span>
+                    <span>{load}/{CSP_CONSTRAINTS.MAX_TEACHER_SLOTS_PER_WEEK} slots</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
